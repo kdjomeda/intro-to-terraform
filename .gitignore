@@ -1,1 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
+*.tfstate
+.idea
+*.iml
+.terraform
+/terraform.tfstate
+/.terraform.tfstate.lock.info
