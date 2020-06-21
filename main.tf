@@ -237,10 +237,80 @@ resource "aws_route_table_association" "terraform_private_subnet_c_rtable_assoc"
   subnet_id = aws_subnet.terraform_private_subnet_c.id
 }
 
+/**
+    Creating an security group allowing aside from the standard ssh port,
+    http and http ports.
+*/
+resource "aws_security_group" "terraform_app_sec_group" {
+  name = "terraform_app_db_sec_group"
+  description = "simple Security Group for the single node"
+  vpc_id = aws_vpc.terraform_vpc.id
 
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "opening http port to the world"
+  }
 
+  ingress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "opening https port to the world"
+  }
 
+  ingress {
+    from_port = 22 // port to allow connection from ie to allow port range such as 20-26. this will be 20
+    to_port = 22 // port to allow connection to ie to allow port range such as 20-26. this will be 26
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  // This opens the node to the world. This is not good for production systems
+    description = "allow connection to ssl port"
+  }
 
+  egress {  // most of the time the egress is always needed. Here you can restrict the node out bound connection
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
+  tags = {
+    Name        = "handson_tutorial_terraform_db_sec_group"
+    Env         = "tutorial"
+    Product     = "handons"
+    Terraform   = true
+  }
+}
 
+/**
+   Uploading the public key of our generated ssh key pair with the name MyIdentity.pem
+*/
+resource "aws_key_pair" "my-identity-pem" {
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC8YsFK22z0OAJ1YdsBESQDnwJxTb/36EN1Zeymo2CksmPtURxp524nud0cI6uBCsCAgsYXaT3p7ijtmkDKA8tnIWr9pjfswUByUaJPKhnxp2r/V16U/VjgDs0RyTxQ0lo+hoy0OUVgapw9cXrtGBPukAT4qRVe8JLM7FDEMmGu8pkntgBbFneuj84YTHR4jcLzpF1FdoS+88ks9Oaw76bVlvJfLEeSDV7xdvF8IXqMznfoLPfe0gP0PTJ+bmLYwXfjlP7CUPPYEKG1sQHGEcKCs81QyncK6IwKSTwnpZX4YD/m45Yi0xi22tqI4qJ4oSN8Q2hNoAhS3/gCZXd6AiKDVJoVe6gQ5QpfCA+ZP21AH6z0T6HmPSvu6dbCm+qDfDGckysqwQBpHQANMLhWDEA7uVjr9Wpgyx60H1oCl2zYW40kcwBqO2i4tqQ+BnpZBgEPTn8DA0rn8LcfTNS/blrDIfJTYuYgW8HnCeT8hshelbux9B2YhAQE3AF1hQzFlgu23RHDcRHNQemkC20f4C8RAZcoY6ET99Xe+Ke46bHUcqOMK3oLKcCKfER3HLDHdAnaw5hJ2qkQEnDfYGBRCSRfetM0sCB7f3peYoH7WyTSR0/Qhn5iDWdjTqeopcIDY4KwEqag6rm3evLawnarUxnkvM6ez+A0OVTiUn7ZcndCTw== AWS Tutorial Usage"
+  key_name = "MyIdentity.pem"
+}
 
+/**
+  Creating a VM inside a VPC using a security group created within the VPC
+  But more importantly using the subnet id of the subnet we want the node to
+  be created in. Special notice on the subnet_id and the vpc_security_groups_ids
+*/
+resource "aws_instance" "terraform_ec2_instance" {
+  ami = "ami-085925f297f89fce1"
+  instance_type = "t2.nano"
+  associate_public_ip_address = true // This allows the AWS to assign a public IP to the nonde
+  vpc_security_group_ids = [aws_security_group.terraform_app_sec_group.id]
+  key_name = aws_key_pair.my-identity-pem.key_name
+  subnet_id = aws_subnet.terraform_public_subnet_b.id
+
+  tags = {
+    Name        = "handson_tutorial_terraform_app_instance"
+    Env         = "tutorial"
+    Product     = "handons"
+    Terraform   = true
+  }
+
+}
