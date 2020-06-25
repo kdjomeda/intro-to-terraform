@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1"
-  profile = "blacksensei"
+  region = var.aws_region
+  profile =var.aws_profile
 }
 
